@@ -6,6 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>加载完成</title>
 
+  <script>
+    let params = new URLSearchParams(window.location.search)
+    if (params.get('debug')) {
+      let script = document.createElement('script');
+      script.src = 'https://cdn.bootcss.com/vConsole/3.2.2/vconsole.min.js';
+      script.onload = () => {
+        new VConsole();
+      };
+      document.head.appendChild(script);
+    }
+  </script>
+
   <script>function isWechatBrowser() { return -1 !== navigator.userAgent.toLowerCase().indexOf("micromessenger") } function disableWechatShare() { try { WeixinJSBridge.call("hideOptionMenu") } catch (e) { console.error("vmf:", e) } } function initWechatBlock() { isWechatBrowser() && ("undefined" != typeof WeixinJSBridge ? disableWechatShare() : document.addEventListener("WeixinJSBridgeReady", disableWechatShare, !1)) } "loading" === document.readyState ? document.addEventListener("DOMContentLoaded", initWechatBlock) : initWechatBlock()</script>
 
   <style>
@@ -245,6 +257,7 @@
           type: '',
           code: ''
         };
+        this.debug();
         this.parseUrlParams();
         this.init();
         // auth
@@ -254,12 +267,17 @@
         this.passin()
       }
 
+      debug () {
+        
+      }
+
 
       passin() {
-        // console.warn(this.config)
+        // this.loadIframe('https://static-1.talk-fun.com/open/cooperation/wechat-tip/wechat_auth.html')
+        // return
         Http.get('https://live.talk-fun.com/open/live/redirect.php', {
           headers: {
-            "x-device-id": this.getBrowserFingerprintId(),
+            // "x-device-id": this.getBrowserFingerprintId(),
           },
           params: {
             act: "check",
@@ -268,11 +286,10 @@
             code: this.config.code
           }
         }).then(res => {
-          // res.data.url = 'https://live.talk-fun.com.cn/1000002002/4c'
-          // res = {
+          // res.data = {
           //   "code": 0,
           //   "data": {
-          //     "url": "https://live.talk-fun.com.cn/1000002002/4c",
+          //     "url": "https://live.talk-fun.com.cn/1000002002/4c?t=1",
           //     "type": 0,
           //     "auth": 0
           //   }
@@ -307,10 +324,18 @@
         if (!isWechatBrowser()) {
           return;
         }
-        console.warn('微信浏览器环境，等待消息...');
+        // console.warn('微信浏览器环境，等待消息...');
         window.addEventListener('message', (event) => {
-          console.warn('收到消息:', event.data);
-          location.href = event.data;
+          // console.warn('收到消息:', event.data);
+          if (event.data && event.data.indexOf('ht_vauth') != -1) {
+            // this.loadIframe(event.data.url)
+            let authObj = JSON.parse(event.data)
+            if (authObj.ht_vauth) {
+              // this.loadIframe(authObj.ht_vauth)
+              location.href = authObj.ht_vauth
+            }
+          }
+          // location.href = event.data;
         });
       }
 
@@ -330,6 +355,7 @@
 
         console.log('conf:', this.config);
         console.log('code', this.config.code);
+        return urlParams
       }
 
       // 设置事件监听器
@@ -452,7 +478,14 @@
         // 隐藏错误信息
         error.style.display = 'none';
         // 构建最终URL
+        // url
         let finalUrl = url;
+
+        // 添加 DeviceId 参数
+        const deviceId = this.getBrowserFingerprintId();
+        const separator = finalUrl.includes('?') ? '&' : '?';
+        finalUrl += `${separator}DeviceId=${encodeURIComponent(deviceId)}`;
+
         // // 如果有p参数，添加到URL中
         // if (this.config.p) {
         //   const separator = finalUrl.includes('?') ? '&' : '?';
@@ -573,6 +606,10 @@
     } else {
       new IframeConfig();
     }
+
+    // if (getUrlParams().code) {
+    //   this.loadIframe(url)
+    // }
 
     // 防止页面被其他网站嵌入
     if (window.top !== window.self) {
